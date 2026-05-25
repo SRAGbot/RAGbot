@@ -1,0 +1,45 @@
+{
+  "name": "ai-support-chatbot",
+  "version": "2.0.0",
+  "description": "Complete AI-powered support chatbot with RAG, voice, OCR, multi-account AI failover",
+  "main": "ai-worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "setup": "node setup.js",
+    "setup:all": "node setup.js --all",
+    "setup:multi": "node setup-multi-ai.js",
+    "kb:list": "node kb-admin.js list",
+    "kb:get": "node kb-admin.js get",
+    "kb:upload": "node kb-admin.js upload",
+    "kb:update": "node kb-admin.js update",
+    "kb:delete": "node kb-admin.js delete",
+    "kb:restore": "node kb-admin.js restore",
+    "kb:samples": "node upload-knowledge.js --samples",
+    "kb:stats": "node kb-admin.js stats",
+    "kb:search": "node kb-admin.js search",
+    "db:init": "wrangler d1 execute support-db --file=schema.sql",
+    "db:seed": "node upload-knowledge.js --samples",
+    "db:backup": "wrangler d1 export support-db --output=backup-$(date +%Y%m%d).sql",
+    "logs": "wrangler tail",
+    "ai:status": "curl -s -H 'X-Admin-Secret: $ADMIN_SECRET' $WORKER_URL/api/admin/ai/status | jq",
+    "ai:switch": "curl -s -X POST -H 'X-Admin-Secret: $ADMIN_SECRET' -H 'Content-Type: application/json' -d '{\"account\":\"$1\"}' $WORKER_URL/api/admin/ai/switch | jq"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "ai",
+    "rag",
+    "chatbot",
+    "voice",
+    "ocr",
+    "multi-account",
+    "failover"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

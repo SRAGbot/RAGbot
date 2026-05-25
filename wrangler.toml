@@ -1,0 +1,94 @@
+# Cloudflare Workers Configuration for AI-Powered Chatbot
+# with Multi-Account AI Failover
+
+name = "ai-support-chatbot"
+main = "ai-worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── Account ────────────────────────────────────────────────────────────────
+# Run: wrangler whoami to get your account ID
+account_id = "YOUR_ACCOUNT_ID"
+
+# ─── Non-sensitive config (safe to commit) ──────────────────────────────────
+[vars]
+ENVIRONMENT        = "production"
+SUPPORT_EMAIL      = "support@yourdomain.com"
+MAX_TOKENS         = "1000"
+AI_MODEL           = "@cf/meta/llama-3.1-8b-instruct"
+EMBEDDING_MODEL    = "@cf/baai/bge-base-en-v1.5"
+RATE_LIMIT_MAX     = "100"
+RATE_LIMIT_WINDOW  = "3600"
+LOG_LEVEL          = "info"
+
+# ─── Workers AI (Primary Binding) ───────────────────────────────────────────
+[ai]
+binding = "AI"
+
+# ─── Vectorize (RAG) ────────────────────────────────────────────────────────
+[[vectorize]]
+binding    = "VECTORIZE"
+index_name = "support-knowledge-base"
+
+# ─── D1 Database ────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding       = "DB"
+database_name = "support-db"
+database_id   = "YOUR_D1_DATABASE_ID"
+
+# ─── KV (sessions + rate limiting) ──────────────────────────────────────────
+[[kv_namespaces]]
+binding = "KV"
+id      = "YOUR_KV_NAMESPACE_ID"
+
+# ─── R2 (document storage) ─────────────────────────────────────────────────
+[[r2_buckets]]
+binding     = "BUCKET"
+bucket_name = "support-documents"
+
+# ─── Cron Triggers ──────────────────────────────────────────────────────────
+[triggers]
+crons = ["0 0 * * *"]
+
+# ─── Limits ─────────────────────────────────────────────────────────────────
+[limits]
+cpu_ms = 50000
+
+# ─── Build ─────────────────────────────────────────────────────────────────
+[build]
+command = ""
+
+# ─── Dev environment (for local testing) ────────────────────────────────────
+[env.dev]
+name = "ai-support-chatbot-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+LOG_LEVEL   = "debug"
+
+[[env.dev.kv_namespaces]]
+binding = "KV"
+id      = "YOUR_KV_NAMESPACE_ID"
+preview_id = "YOUR_KV_PREVIEW_NAMESPACE_ID"
+
+[[env.dev.d1_databases]]
+binding       = "DB"
+database_name = "support-db"
+database_id   = "YOUR_D1_DATABASE_ID"
+
+# ─── Production environment ─────────────────────────────────────────────────
+[env.production]
+name = "ai-support-chatbot-prod"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+LOG_LEVEL   = "warn"
+
+[[env.production.d1_databases]]
+binding       = "DB"
+database_name = "support-db"
+database_id   = "YOUR_D1_DATABASE_ID"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id      = "YOUR_KV_NAMESPACE_ID"
