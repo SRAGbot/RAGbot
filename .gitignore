@@ -1,0 +1,21 @@
+# ─── Secrets — NEVER commit these ───────────────────────────
+.env
+.dev.vars
+
+# ─── Dependencies ────────────────────────────────────────────
+node_modules/
+
+# ─── Wrangler output ─────────────────────────────────────────
+.wrangler/
+dist/
+
+# ─── OS / editor ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# ─── Backups ─────────────────────────────────────────────────
+*.sql.bak
+backup*.sql
