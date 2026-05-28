@@ -9,13 +9,68 @@
  *   VECTORIZE  — Vectorize index
  *   DB         — D1 database
  *   KV         — KV namespace (sessions + rate limiting)
- *   BUCKET     — R2 bucket (document storage)
+ *   BUCKET     — R2 bucket (document storage) [Or B2 Bucket configured via env vars]
  *
  * Secrets (wrangler secret put):
  *   TG_BOT_TOKEN, TG_CHAT_ID, ADMIN_SECRET
  *   CF_ACCOUNT_ID_1, CF_ACCOUNT_ID_2, CF_ACCOUNT_ID_3 (for multi-account)
  *   CF_API_TOKEN_1, CF_API_TOKEN_2, CF_API_TOKEN_3
+ *   B2_ENDPOINT, B2_ACCESS_KEY_ID, B2_SECRET_ACCESS_KEY, B2_BUCKET_NAME, B2_REGION
  */
+
+import { AwsClient } from 'aws4fetch';
+
+// ─── B2 Bucket Adapter ────────────────────────────────────────────────────────
+class B2BucketAdapter {
+  constructor(env) {
+    this.env = env;
+    this.aws = new AwsClient({
+      accessKeyId: env.B2_ACCESS_KEY_ID,
+      secretAccessKey: env.B2_SECRET_ACCESS_KEY,
+      service: 's3',
+      region: env.B2_REGION || 'us-east-005',
+    });
+    this.endpoint = env.B2_ENDPOINT; // e.g. https://s3.us-east-005.backblazeb2.com
+    this.bucketName = env.B2_BUCKET_NAME;
+  }
+
+  async put(key, value, options = {}) {
+    const url = `${this.endpoint}/${this.bucketName}/${key}`;
+    const headers = {};
+    if (options.httpMetadata?.contentType) {
+      headers['Content-Type'] = options.httpMetadata.contentType;
+    }
+    const req = await this.aws.sign(url, {
+      method: 'PUT',
+      headers,
+      body: value
+    });
+    const res = await fetch(req);
+    if (!res.ok) throw new Error(`B2 put error: ${await res.text()}`);
+    return res;
+  }
+
+  async get(key) {
+    const url = `${this.endpoint}/${this.bucketName}/${key}`;
+    const req = await this.aws.sign(url, { method: 'GET' });
+    const res = await fetch(req);
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error(`B2 get error: ${await res.text()}`);
+    }
+    return {
+      text: async () => res.text()
+    };
+  }
+
+  async delete(key) {
+    const url = `${this.endpoint}/${this.bucketName}/${key}`;
+    const req = await this.aws.sign(url, { method: 'DELETE' });
+    const res = await fetch(req);
+    if (!res.ok && res.status !== 404) throw new Error(`B2 delete error: ${await res.text()}`);
+    return res;
+  }
+}
 
 // ─── CORS headers ─────────────────────────────────────────────────────────────
 const CORS = {
@@ -1406,6 +1461,11 @@ voiceBtn.onclick = async () => {
 // ═════════════════════════════════════════════════════════════════════════════
 export default {
   async fetch(req, env) {
+    // Intercept BUCKET if B2 is configured
+    if (env.B2_ACCESS_KEY_ID && env.B2_SECRET_ACCESS_KEY && env.B2_ENDPOINT && env.B2_BUCKET_NAME) {
+      env.BUCKET = new B2BucketAdapter(env);
+    }
+
     // Environment validation on first request
     if (!env.__validated) {
       const requiredBindings = ['AI', 'DB', 'KV'];
@@ -1419,7 +1479,7 @@ export default {
       }
       
       if (!env.BUCKET) {
-        console.warn('⚠️ BUCKET (R2) not bound - document storage disabled');
+        console.warn('⚠️ BUCKET (R2 or B2) not configured - document storage disabled');
       }
       
       env.__validated = true;

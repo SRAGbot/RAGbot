@@ -41,5 +41,8 @@
   "license": "MIT",
   "devDependencies": {
     "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.20"
   }
 }
